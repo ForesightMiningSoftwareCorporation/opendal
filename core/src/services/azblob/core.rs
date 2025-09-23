@@ -72,8 +72,13 @@ pub struct AzblobCore {
     pub encryption_key: Option<HeaderValue>,
     pub encryption_key_sha256: Option<HeaderValue>,
     pub encryption_algorithm: Option<HeaderValue>,
+    pub override_credential: Option<Arc<dyn CredentialProvider>>,
     pub loader: AzureStorageLoader,
     pub signer: AzureStorageSigner,
+}
+
+pub trait CredentialProvider: Send + Sync {
+    fn get_credential(&self) -> AzureStorageCredential;
 }
 
 impl Debug for AzblobCore {
@@ -88,11 +93,21 @@ impl Debug for AzblobCore {
 
 impl AzblobCore {
     async fn load_credential(&self) -> Result<AzureStorageCredential> {
-        let cred = self
-            .loader
-            .load()
-            .await
-            .map_err(new_request_credential_error)?;
+        // Prioritize override credential.
+        let mut cred = None;
+        if let Some(override_credential) = self.override_credential.as_ref() {
+            let override_credential = override_credential.get_credential();
+            if override_credential.is_valid() {
+                cred = Some(override_credential);
+            }
+        }
+        if cred.is_none() {
+            cred = self
+                .loader
+                .load()
+                .await
+                .map_err(new_request_credential_error)?;
+        }
 
         if let Some(cred) = cred {
             Ok(cred)
