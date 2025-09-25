@@ -33,6 +33,7 @@ use sha2::Sha256;
 use super::core::constants::X_MS_META_PREFIX;
 use super::core::constants::X_MS_VERSION_ID;
 use super::core::AzblobCore;
+use super::core::CredentialProvider;
 use super::delete::AzblobDeleter;
 use super::error::parse_error;
 use super::lister::AzblobLister;
@@ -63,7 +64,7 @@ impl Configurator for AzblobConfig {
     fn into_builder(self) -> Self::Builder {
         AzblobBuilder {
             config: self,
-
+            override_credential: None,
             http_client: None,
         }
     }
@@ -73,6 +74,7 @@ impl Configurator for AzblobConfig {
 #[derive(Default, Clone)]
 pub struct AzblobBuilder {
     config: AzblobConfig,
+    override_credential: Option<Arc<dyn CredentialProvider>>,
 
     #[deprecated(since = "0.53.0", note = "Use `Operator::update_http_client` instead")]
     http_client: Option<HttpClient>,
@@ -238,10 +240,17 @@ impl AzblobBuilder {
     /// See [Grant limited access to Azure Storage resources using shared access signatures (SAS)](https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview)
     /// for more info.
     pub fn sas_token(mut self, sas_token: &str) -> Self {
-        if !sas_token.is_empty() {
-            self.config.sas_token = Some(sas_token.to_string());
-        }
+        self.config.sas_token = Some(sas_token.into());
+        self
+    }
 
+    /// Set a handle to a credential that is managed externally.
+    ///
+    /// This takes precedence over any other provided credentials, although
+    /// if the credential is deemed invalid, the backend will try to load from
+    /// other sources.
+    pub fn override_credential(mut self, override_credential: Arc<dyn CredentialProvider>) -> Self {
+        self.override_credential = Some(override_credential);
         self
     }
 
@@ -326,6 +335,9 @@ impl Builder for AzblobBuilder {
         }?;
         debug!("backend use endpoint {}", &container);
 
+        #[cfg(target_arch = "wasm32")]
+        let mut config_loader = AzureStorageConfig::default();
+        #[cfg(not(target_arch = "wasm32"))]
         let mut config_loader = AzureStorageConfig::default().from_env();
 
         if let Some(v) = self
@@ -454,6 +466,7 @@ impl Builder for AzblobBuilder {
                 encryption_algorithm,
                 container: self.config.container.clone(),
 
+                override_credential: self.override_credential,
                 loader: cred_loader,
                 signer,
             }),

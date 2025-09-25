@@ -33,6 +33,10 @@ pub(crate) mod writer;
 mod backend;
 #[cfg(feature = "services-azblob")]
 pub use backend::AzblobBuilder as Azblob;
+#[cfg(feature = "services-azblob")]
+pub use core::CredentialProvider;
+#[cfg(feature = "services-azblob")]
+pub use reqsign::AzureStorageCredential;
 
 mod config;
 pub use config::AzblobConfig;
