@@ -77,6 +77,7 @@ pub struct AzblobCore {
     pub signer: AzureStorageSigner,
 }
 
+#[allow(missing_docs)]
 pub trait CredentialProvider: Send + Sync {
     fn get_credential(&self) -> AzureStorageCredential;
 }

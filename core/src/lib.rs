@@ -154,6 +154,9 @@
 
 // Make sure all our public APIs have docs.
 #![deny(missing_docs)]
+// Otherwise warnings leak out into other crate doc builds.
+#![allow(rustdoc::broken_intra_doc_links)]
+#![allow(rustdoc::bare_urls)]
 
 // Private module with public types, they will be accessed via `opendal::Xxxx`
 mod types;

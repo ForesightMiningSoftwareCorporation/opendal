@@ -28,7 +28,9 @@ homepage = "https://opendal.apache.org/"
 license = "Apache-2.0"
 repository = "https://github.com/apache/opendal"
 rust-version = "1.82"
-version = "0.54.1"
+version = "0.55.0-fsl-pre"
+
+publish = ["foresight-mining-software-corporation"]
 
 [lints.clippy]
 unused_async = "warn"
